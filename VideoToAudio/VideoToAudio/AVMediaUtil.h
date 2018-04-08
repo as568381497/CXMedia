@@ -11,7 +11,8 @@
 #import <MediaPlayer/MediaPlayer.h>
 
 typedef NS_ENUM(NSUInteger, successType) {
-    mediaNil,
+    mediaPathNil,
+    mediaAudioTrackNil,
     mediaFailed,
     mediaStatus
 };

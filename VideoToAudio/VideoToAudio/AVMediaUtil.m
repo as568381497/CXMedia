@@ -17,44 +17,42 @@
     //判断读取路径是否存在
     if (readPath == nil)
     {
-        completionHandler(mediaNil,@"");
+        completionHandler(mediaPathNil,@"");
         return;
     }
-    
     
     //处理输入文件，抽出音轨，并获取播放时长
     AVMutableComposition *newAudioAsset = [AVMutableComposition composition];
     AVMutableCompositionTrack *dstCompositionTrack;
     dstCompositionTrack = [newAudioAsset addMutableTrackWithMediaType:AVMediaTypeAudio preferredTrackID:kCMPersistentTrackID_Invalid];
     AVAsset *srcAsset = [AVURLAsset URLAssetWithURL:readPath options:nil];
-    AVAssetTrack *srcTrack = [[srcAsset tracksWithMediaType:AVMediaTypeAudio] objectAtIndex:0];
+    NSArray *audioArr = [srcAsset tracksWithMediaType:AVMediaTypeAudio];
+    
+    //检查是否有音轨
+    if (audioArr.count == 0)
+    {
+        completionHandler(mediaAudioTrackNil,@"");
+        return;
+    }
+    
+    AVAssetTrack *srcTrack = [audioArr firstObject];
     CMTimeRange timeRange = srcTrack.timeRange;
-    
-    
     
     //合成音轨，输出错误 如果有
     NSError *error;
     if(NO == [dstCompositionTrack insertTimeRange:timeRange ofTrack:srcTrack atTime:kCMTimeZero error:&error]) {
         NSLog(@"track insert failed: %@n", error);
+        completionHandler(mediaFailed,@"");
         return;
     }
     
-    //处理输出文件，确定输出类型
-    AVAssetExportSession *exportSesh = [[AVAssetExportSession alloc] initWithAsset:newAudioAsset presetName:AVAssetExportPresetPassthrough];
+    //处理输出文件，确定输出类型,优先转换为m4a
+    AVAssetExportSession *exportSesh = [[AVAssetExportSession alloc] initWithAsset:srcAsset presetName:AVAssetExportPresetAppleM4A];
     
     NSString *fileName = [self getFileName:readPath];
     NSArray *typeArr = [NSArray arrayWithArray:[exportSesh supportedFileTypes]];
-    if ([typeArr containsObject:AVFileTypeMPEGLayer3])
-    {
-        NSString *name = [self getOutputName:fileName WithExtension:@"mp3"];
-        NSString *filePath = [OUTPUTPATH stringByAppendingPathComponent:name];
-        NSURL *outputURL = [NSURL fileURLWithPath:filePath];
-        exportSesh.outputFileType = AVFileTypeMPEGLayer3;
-        exportSesh.outputURL = outputURL;
-        fileName = name;
-        
-    }
-    else if ([typeArr containsObject:AVFileTypeAppleM4A])
+    
+    if ([typeArr containsObject:AVFileTypeAppleM4A])
     {
         NSString *name = [self getOutputName:fileName WithExtension:@"m4a"];
         NSString *filePath = [OUTPUTPATH stringByAppendingPathComponent:name];
@@ -64,11 +62,21 @@
         fileName = name;
     }
     
+    else if ([typeArr containsObject:AVFileTypeMPEGLayer3])
+    {
+        NSString *name = [self getOutputName:fileName WithExtension:@"mp3"];
+        NSString *filePath = [OUTPUTPATH stringByAppendingPathComponent:name];
+        NSURL *outputURL = [NSURL fileURLWithPath:filePath];
+        exportSesh.outputFileType = AVFileTypeMPEGLayer3;
+        exportSesh.outputURL = outputURL;
+        fileName = name;
+    }
+    
     //执行输出操作
     [exportSesh exportAsynchronouslyWithCompletionHandler:^{
         
         AVAssetExportSessionStatus status = exportSesh.status;
-        NSLog(@"exportAsynchronouslyWithCompletionHandler: %lin", (long)status);
+        NSLog(@"exportAsynchronouslyWithCompletionHandler: %ld", (long)status);
         
         if(AVAssetExportSessionStatusFailed == status)
         {
