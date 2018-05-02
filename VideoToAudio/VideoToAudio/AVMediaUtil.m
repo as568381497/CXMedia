@@ -21,6 +21,14 @@
         return;
     }
     
+    //输入路径是否有文件
+    if ([[NSFileManager defaultManager] fileExistsAtPath:readPath.absoluteString])
+    {
+        completionHandler(mediaPathNil,@"");
+        return;
+    }
+    
+    
     //处理输入文件，抽出音轨，并获取播放时长
     AVMutableComposition *newAudioAsset = [AVMutableComposition composition];
     AVMutableCompositionTrack *dstCompositionTrack;
@@ -42,14 +50,13 @@
     NSError *error;
     if(NO == [dstCompositionTrack insertTimeRange:timeRange ofTrack:srcTrack atTime:kCMTimeZero error:&error]) {
         NSLog(@"track insert failed: %@n", error);
-        completionHandler(mediaFailed,@"");
         return;
     }
     
     //处理输出文件，确定输出类型,优先转换为m4a
     AVAssetExportSession *exportSesh = [[AVAssetExportSession alloc] initWithAsset:srcAsset presetName:AVAssetExportPresetAppleM4A];
     
-    NSString *fileName = [self getFileName:readPath];
+    NSString *fileName;
     NSArray *typeArr = [NSArray arrayWithArray:[exportSesh supportedFileTypes]];
     
     if ([typeArr containsObject:AVFileTypeAppleM4A])
@@ -92,6 +99,9 @@
     }];
 }
 
+
+#pragma mark - 内部方法
+
 + (NSString *)shavedString:(NSString *)path
 {
     
@@ -110,9 +120,7 @@
     
 }
 
-
-#pragma mark - 内部方法
-//获取文件名称
+//根据URL获取文件名称
 + (NSString *)getFileName:(NSURL *)path
 {
     NSString *lastString = path.lastPathComponent;
@@ -130,21 +138,18 @@
 //判断输出路径是否有文件存在,如果有则输出返回新名称
 + (NSString *)getOutputName:(NSString *)name WithExtension:(NSString *)extension
 {
-    NSString *filePath = [OUTPUTPATH stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@",name,extension]];
-    NSURL *outputURL = [NSURL URLWithString:filePath];
+    NSString *olefilePath = [OUTPUTPATH stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@",name,extension]];
+    
+    NSString *fileName = [NSString stringWithFormat:@"%@.%@",name,extension];
     
     //判断读取路径是否存在
-    if ([[NSFileManager defaultManager] fileExistsAtPath:outputURL.absoluteString])
+    if ([[NSFileManager defaultManager] fileExistsAtPath:olefilePath])
     {
-        NSRange range = [outputURL.absoluteString rangeOfString:outputURL.lastPathComponent];
-        NSRange textRange = {0,range.location};
-        NSString *filePath = [outputURL.absoluteString substringWithRange:textRange];
         int index = 1;
-        NSString *newfileName;
         while (1)
         {
-            newfileName = [NSString stringWithFormat:@"%@(%d).%@",name,index,extension];
-            if ([[NSFileManager defaultManager] fileExistsAtPath:[filePath stringByAppendingPathComponent:newfileName]])
+            NSString *newfileName = [NSString stringWithFormat:@"%@(%d).%@",name,index,extension];
+            if ([[NSFileManager defaultManager] fileExistsAtPath:[OUTPUTPATH stringByAppendingPathComponent:newfileName]])
             {
                 index++;
                 continue;
@@ -155,13 +160,28 @@
             }
             
         }
-       
+        
     }
     else
     {
-        return [NSString stringWithFormat:@"%@.%@",name,extension];
+        return fileName;
     }
     
 }
+
+//获取文件名获取文件名称
++ (NSString *)shavedName:(NSString *)fileName
+{
+    if (fileName.length == 0)
+    {
+        return @"";
+    }
+    
+    NSRange range = [fileName rangeOfString:@"."];
+    NSRange textRange = {0,range.location};
+    NSString *name = [fileName substringWithRange:textRange];
+    return name;
+}
+
 
 @end

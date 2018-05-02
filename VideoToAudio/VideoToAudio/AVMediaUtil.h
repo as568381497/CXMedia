@@ -23,7 +23,5 @@ typedef NS_ENUM(NSUInteger, successType) {
 //转换为音频从url
 + (void)changeVideoToAudioWithReadPath:(NSURL *)readPath completionHandler:(void(^)(successType success , NSString *fileName))completionHandler;
 
-//处理路径,去除@“file”头部
-+ (NSString *)shavedString:(NSString *)path;
 
 @end
